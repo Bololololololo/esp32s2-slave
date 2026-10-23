@@ -29,29 +29,28 @@ void app_main(void);
 }
 
 void app_main(void) {
-  /* Set log level  */
-  esp_log_level_set("*", LOG_LEVEL);
+    /* Set log level  */
+    esp_log_level_set("*", LOG_LEVEL);
 
-  /* Configure the peripheral according to the LED type */
-  StatusLED status_led;
-  status_led.setColor(utils::StatusLEDColor::RED);
+    /* Configure the peripheral according to the LED type */
+    StatusLED status_led;
+    status_led.setColor(utils::StatusLEDColor::RED);
 
-  /* Start the WiFi service*/
-  ServiceManager *serviceManager = ServiceManager::getInstance();
-  ESP_ERROR_CHECK(serviceManager->startService(ServiceType::SERVICE_MSGR));
-  ESP_ERROR_CHECK(serviceManager->startService(ServiceType::SERVICE_WIFI));
+    /* Start the WiFi service*/
+    ServiceManager *serviceManager = ServiceManager::getInstance();
+    ESP_ERROR_CHECK(serviceManager->startService(ServiceType::SERVICE_MSGR));
+    ESP_ERROR_CHECK(serviceManager->startService(ServiceType::SERVICE_WIFI));
 
-  /* Start the wifi provisioning */
-  const esp_err_t ret = messageRouter::MessageRouter::getInstance()->publish(
-      Message(COMPONENT_ID_LVGL_DISPLAY, "wifi:provision"));
-  if (ret != ESP_OK) {
-    ESP_LOGE(TAG, "Failed to publish Wi-Fi mode selection: %s",
-             esp_err_to_name(ret));
-  }
+    /* Start the wifi provisioning */
+    const esp_err_t ret =
+        messageRouter::MessageRouter::getInstance()->publish(Message(COMPONENT_ID_LVGL_DISPLAY, "wifi:provision"));
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to publish Wi-Fi mode selection: %s", esp_err_to_name(ret));
+    }
 
-  status_led.setColor(utils::StatusLEDColor::GREEN);
+    status_led.setColor(utils::StatusLEDColor::GREEN);
 
-  while (1) {
-    vTaskDelay(pdMS_TO_TICKS(100));
-  }
+    while (1) {
+        vTaskDelay(pdMS_TO_TICKS(100));
+    }
 }

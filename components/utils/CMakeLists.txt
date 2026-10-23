@@ -1,6 +1,6 @@
 file(GLOB SOURCES "*.cpp")
 
-idf_component_register(SRCS "${SOURCES}"
+idf_component_register(SRCS "system_info.cpp" "status_led.cpp" "${SOURCES}"
                        INCLUDE_DIRS "include"
                        PRIV_REQUIRES esp_psram driver led_strip esp_hw_support esp_system esp_driver_gpio
                        ${extra_args})
