@@ -9,6 +9,7 @@
 #include "nvs_flash.h"
 #include <cstdio>
 #include <cstring>
+#include <string>
 
 using namespace messageRouter;
 
@@ -75,6 +76,31 @@ static bool getFormField(const char *body, const char *fieldName, char *output, 
         field = *end ? end + 1 : nullptr;
     }
     return false;
+}
+
+static void appendHtmlEscaped(std::string &html, const uint8_t *value, size_t length) {
+    for (size_t i = 0; i < length; ++i) {
+        switch (value[i]) {
+        case '&':
+            html += "&amp;";
+            break;
+        case '<':
+            html += "&lt;";
+            break;
+        case '>':
+            html += "&gt;";
+            break;
+        case '"':
+            html += "&quot;";
+            break;
+        case '\'':
+            html += "&#39;";
+            break;
+        default:
+            html += static_cast<char>(value[i]);
+            break;
+        }
+    }
 }
 
 } // namespace
@@ -242,6 +268,10 @@ esp_err_t WifiComponent::applyMode(const char *mode) {
     if (std::strcmp(mode, "station") != 0) {
         ESP_LOGW(TAG, "Ignoring unknown Wi-Fi mode command");
         return ESP_ERR_INVALID_ARG;
+    }
+
+    if (std::strcmp(mode, "reset") == 0) {
+        return resetWifi();
     }
 
     wifi_config_t stationConfig{};
@@ -466,17 +496,78 @@ void WifiComponent::ipEventHandler(void *arg, esp_event_base_t eventBase, int32_
 }
 
 esp_err_t WifiComponent::portalGetHandler(httpd_req_t *request) {
-    static const char page[] = "<!doctype html><html><head><meta name=\"viewport\" "
-                               "content=\"width=device-width,initial-scale=1\">"
-                               "<title>Wi-Fi setup</title></head><body><h1>Wi-Fi setup</h1>"
-                               "<form method=\"post\" action=\"/connect\">"
-                               "<label>Network name (SSID)<br><input name=\"ssid\" maxlength=\"32\" "
-                               "required></label><br><br>"
-                               "<label>Password<br><input name=\"password\" type=\"password\" "
-                               "maxlength=\"63\"></label><br><br>"
-                               "<button type=\"submit\">Connect</button></form></body></html>";
+    wifi_mode_t previousMode;
+    esp_err_t ret = esp_wifi_get_mode(&previousMode);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Could not get Wi-Fi mode before scanning: %s", esp_err_to_name(ret));
+        httpd_resp_send_err(request, HTTPD_500_INTERNAL_SERVER_ERROR, "Could not scan for networks");
+        return ESP_OK;
+    }
+
+    if (previousMode == WIFI_MODE_AP) {
+        ret = esp_wifi_set_mode(WIFI_MODE_APSTA);
+        if (ret != ESP_OK) {
+            ESP_LOGE(TAG, "Could not enable station mode for Wi-Fi scan: %s", esp_err_to_name(ret));
+            httpd_resp_send_err(request, HTTPD_500_INTERNAL_SERVER_ERROR, "Could not scan for networks");
+            return ESP_OK;
+        }
+    }
+
+    wifi_scan_config_t scanConfig{};
+    ret = esp_wifi_scan_start(&scanConfig, true);
+    wifi_ap_record_t accessPoints[20]{};
+    uint16_t accessPointCount = static_cast<uint16_t>(sizeof(accessPoints) / sizeof(accessPoints[0]));
+    if (ret == ESP_OK) {
+        ret = esp_wifi_scan_get_ap_records(&accessPointCount, accessPoints);
+    }
+
+    if (previousMode == WIFI_MODE_AP) {
+        const esp_err_t restoreRet = esp_wifi_set_mode(previousMode);
+        if (restoreRet != ESP_OK) {
+            ESP_LOGE(TAG, "Could not restore Wi-Fi mode after scan: %s", esp_err_to_name(restoreRet));
+            httpd_resp_send_err(request, HTTPD_500_INTERNAL_SERVER_ERROR, "Could not restore Wi-Fi portal");
+            return ESP_OK;
+        }
+    }
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Wi-Fi scan failed: %s", esp_err_to_name(ret));
+        httpd_resp_send_err(request, HTTPD_500_INTERNAL_SERVER_ERROR, "Could not scan for networks");
+        return ESP_OK;
+    }
+
+    std::string page = "<!doctype html><html><head><meta name=\"viewport\" "
+                       "content=\"width=device-width,initial-scale=1\">"
+                       "<title>Wi-Fi setup</title></head><body><h1>Wi-Fi setup</h1>"
+                       "<form method=\"post\" action=\"/connect\">"
+                       "<label>Network<br><select name=\"ssid\" required>"
+                       "<option value=\"\" disabled selected>Select a network</option>";
+    bool hasAccessPoint = false;
+    for (uint16_t i = 0; i < accessPointCount; ++i) {
+        const size_t ssidLength =
+            strnlen(reinterpret_cast<const char *>(accessPoints[i].ssid), sizeof(accessPoints[i].ssid));
+        if (ssidLength == 0) {
+            continue;
+        }
+        hasAccessPoint = true;
+        page += "<option value=\"";
+        appendHtmlEscaped(page, accessPoints[i].ssid, ssidLength);
+        page += "\">";
+        appendHtmlEscaped(page, accessPoints[i].ssid, ssidLength);
+        page += " (";
+        page += std::to_string(accessPoints[i].rssi);
+        page += " dBm, ";
+        page += accessPoints[i].authmode == WIFI_AUTH_OPEN ? "open" : "secured";
+        page += ")</option>";
+    }
+    if (!hasAccessPoint) {
+        page += "<option value=\"\" disabled>No access points found</option>";
+    }
+    page += "</select></label><br><br>"
+            "<label>Password<br><input name=\"password\" type=\"password\" "
+            "maxlength=\"63\"></label><br><br>"
+            "<button type=\"submit\">Connect</button></form></body></html>";
     httpd_resp_set_type(request, "text/html");
-    return httpd_resp_send(request, page, HTTPD_RESP_USE_STRLEN);
+    return httpd_resp_send(request, page.c_str(), static_cast<ssize_t>(page.size()));
 }
 
 esp_err_t WifiComponent::portalPostHandler(httpd_req_t *request) {
@@ -518,6 +609,16 @@ esp_err_t WifiComponent::portalPostHandler(httpd_req_t *request) {
                                    "while the device connects.</p></body></html>";
     httpd_resp_set_type(request, "text/html");
     return httpd_resp_send(request, response, HTTPD_RESP_USE_STRLEN);
+}
+
+esp_err_t WifiComponent::resetWifi() {
+    auto ret = esp_wifi_disconnect();
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to disconnect Wi-Fi: %s", esp_err_to_name(ret));
+        return ret;
+    }
+
+    return esp_wifi_restore();
 }
 
 } // namespace wifi

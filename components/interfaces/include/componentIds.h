@@ -11,6 +11,9 @@ enum ComponentId {
     COMPONENT_ID_WIFI,
     COMPONENT_ID_BLE,
     COMPONENT_ID_STORAGE,
+    COMPONENT_ID_STATUS_LED,
+    COMPONENT_ID_MQTT,
+    COMPONENT_ID_PROXIMITY_SENSOR,
     COMPONENT_ID_TEST_SUB,
     COMPONENT_ID_TEST_SUB1,
     COMPONENT_ID_TEST_SUB2,
@@ -24,6 +27,9 @@ inline std::map<ComponentId, std::string> componentIdToString = {{COMPONENT_ID_L
                                                                  {COMPONENT_ID_WIFI, "WiFi"},
                                                                  {COMPONENT_ID_BLE, "BLE"},
                                                                  {COMPONENT_ID_STORAGE, "Storage"},
+                                                                 {COMPONENT_ID_STATUS_LED, "Status LED"},
+                                                                 {COMPONENT_ID_MQTT, "MQTT"},
+                                                                 {COMPONENT_ID_PROXIMITY_SENSOR, "Proximity Sensor"},
                                                                  {COMPONENT_ID_TEST_SUB, "Test Subscriber"},
                                                                  {COMPONENT_ID_TEST_SUB1, "Test Subscriber 1"},
                                                                  {COMPONENT_ID_TEST_SUB2, "Test Subscriber 2"},
@@ -36,6 +42,9 @@ enum ComponentId {
     COMPONENT_ID_WIFI,
     COMPONENT_ID_BLE,
     COMPONENT_ID_STORAGE,
+    COMPONENT_ID_STATUS_LED,
+    COMPONENT_ID_MQTT,
+    COMPONENT_ID_PROXIMITY_SENSOR,
     COMPONENT_ID_ALL, // Wildcard: subscribe to messages from all components
     COMPONENT_ID_MAX
 };
@@ -45,6 +54,9 @@ inline std::map<ComponentId, std::string> componentIdToString = {{COMPONENT_ID_L
                                                                  {COMPONENT_ID_WIFI, "WiFi"},
                                                                  {COMPONENT_ID_BLE, "BLE"},
                                                                  {COMPONENT_ID_STORAGE, "Storage"},
+                                                                 {COMPONENT_ID_STATUS_LED, "Status LED"},
+                                                                 {COMPONENT_ID_MQTT, "MQTT"},
+                                                                 {COMPONENT_ID_PROXIMITY_SENSOR, "Proximity Sensor"},
                                                                  {COMPONENT_ID_ALL, "All Components (Wildcard)"}};
 #endif
 

@@ -10,6 +10,7 @@ enum ServiceType {
     SERVICE_CAMERA,
     SERVICE_GUI,
     SERVICE_MSGR,
+    SERVICE_SENSORS,
     SERVICE_MAX
 };
 

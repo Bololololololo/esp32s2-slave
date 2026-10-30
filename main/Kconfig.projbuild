@@ -47,3 +47,41 @@ menu "Example Configuration"
             Define the blinking period in milliseconds.
 
 endmenu
+
+
+menu "Bolo's project settings"
+    menu "Services"
+        config ENABLE_SERVICE_WIFI
+            bool "Enable WiFi Service"
+            default y
+            help
+                Enables the WiFi service, which allows the system to connect to WiFi networks.
+        config ENABLE_SERVICE_MSGR
+            bool "Enable Message Router Service"
+            default y
+            help
+                Enables the message router service, which allows different components of the system to communicate with each other through messages.
+        config ENABLE_SERVICE_SENSORS
+            bool "Enable Sensors Service"
+            default y
+            help
+                Enables the sensors service, which allows the system to read data from various sensors and process it accordingly.
+    endmenu
+    config STORAGE_TESTS
+        bool "Enable Storage Tests"
+        default n
+        help
+            Enables storage tests and adds them to the image. This will increase the image size and may affect performance, so it should only be enabled during development and testing.
+    
+    config UTILS_TESTS
+        bool "Enable Utils Tests"
+        default n
+        help
+            Enables utils tests and adds them to the image. This will increase the image size and may affect performance, so it should only be enabled during development and testing.          
+
+    config MSGR_TESTS
+        bool "Enable Message Router Tests"
+        default n
+        help
+            Enables message router tests and adds them to the image. This will increase the image size and may affect performance, so it should only be enabled during development and testing.          
+endmenu

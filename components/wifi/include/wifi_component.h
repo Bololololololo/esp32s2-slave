@@ -27,6 +27,7 @@ class WifiComponent : public ComponentInterface, public std::enable_shared_from_
     esp_err_t startProvisioningPortal();
     esp_err_t connectToNetwork(const char *ssid, const char *password);
     esp_err_t startPortalServer();
+    esp_err_t resetWifi();
     void stopPortalServer();
     void publishStatus(const char *status);
 

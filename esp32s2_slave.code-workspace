@@ -2,9 +2,16 @@
 	"folders": [
 		{
 			"path": "."
+		},
+		{
+			"path": "../../../esp/esp-idf"
 		}
 	],
 	"settings": {
-		"terminal.integrated.stickyScroll.enabled": false
+		"terminal.integrated.stickyScroll.enabled": false,
+		"cmake.ignoreCMakeListsMissing": true,
+		"cmake.configureOnOpen": false,
+		"cmake.enableAutomaticKitScan": false,
+		"cmake.sourceDirectory": "${workspaceFolder}/nonexistent"
 	}
 }

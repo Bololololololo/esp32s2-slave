@@ -1,7 +1,15 @@
 #include "service_manager.h"
 #include "esp_log.h"
+#include "sdkconfig.h"
+#ifdef CONFIG_ENABLE_SERVICE_MSGR
 #include "message_router_service.h"
+#endif
+#ifdef CONFIG_ENABLE_SERVICE_SENSORS
+#include "sensors_service.h"
+#endif
+#ifdef CONFIG_ENABLE_SERVICE_WIFI
 #include "wifi_service.h"
+#endif
 #include <stdio.h>
 
 static const char *TAG = "service-manager";
@@ -9,8 +17,15 @@ static const char *TAG = "service-manager";
 namespace services {
 ServiceManager::ServiceManager(_cons) {
     // Constructor implementation - initialize all services
+#ifdef CONFIG_ENABLE_SERVICE_MSGR
     this->servicesMap.emplace(ServiceType::SERVICE_MSGR, std::make_unique<MessageRouterService>());
+#endif
+#ifdef CONFIG_ENABLE_SERVICE_WIFI
     this->servicesMap.emplace(ServiceType::SERVICE_WIFI, std::make_unique<WifiService>());
+#endif
+#ifdef CONFIG_ENABLE_SERVICE_SENSORS
+    this->servicesMap.emplace(ServiceType::SERVICE_SENSORS, std::make_unique<SensorsService>());
+#endif
 }
 
 esp_err_t ServiceManager::startService(const ServiceType &serviceType) {

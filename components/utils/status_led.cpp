@@ -1,11 +1,12 @@
 #include "status_led.h"
-
+#include "driver/gpio.h"
+#include "esp_log.h"
+#include "message_router.h"
+#include "sdkconfig.h"
 #include "status_led.h"
 #include <stdio.h>
 
-#include "driver/gpio.h"
-#include "esp_log.h"
-#include "sdkconfig.h"
+using namespace messageRouter;
 
 static const char *TAG = "rgb_led";
 
@@ -17,7 +18,7 @@ static const char *TAG = "rgb_led";
 
 namespace utils {
 
-StatusLED::StatusLED() {
+StatusLED::StatusLED() : ComponentInterface(ComponentId::COMPONENT_ID_STATUS_LED) {
     ESP_LOGI(TAG, "Configuring status LED...");
 
     /* LED strip initialization with the GPIO and pixels number*/
@@ -49,9 +50,15 @@ StatusLED::StatusLED() {
 #endif
     /* Set all LED off to clear all pixels */
     led_strip_clear(led_strip);
+
+#ifdef CONFIG_ENABLE_SERVICE_WIFI
+    ESP_ERROR_CHECK(
+        MessageRouter::getInstance()->subscribe(std::make_shared<StatusLED>(*this), ComponentId::COMPONENT_ID_WIFI));
+#endif
 }
 
 StatusLED::~StatusLED() {
+    MessageRouter::getInstance()->unsubscribe(shared_from_this(), ComponentId::COMPONENT_ID_STATUS_LED);
 }
 
 void StatusLED::setColor(StatusLEDColor led_color) {
@@ -74,4 +81,28 @@ void StatusLED::setColor(StatusLEDColor led_color) {
     }
     led_strip_refresh(led_strip);
 }
+
+esp_err_t StatusLED::messageHandler(const Message &msg) {
+#ifdef CONFIG_ENABLE_SERVICE_WIFI
+    if (msg.id != ComponentId::COMPONENT_ID_WIFI) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    if (std::strncmp(msg.payload, "wifi_status:", 12) != 0) {
+        return ESP_ERR_NOT_SUPPORTED;
+    }
+    if (std::strncmp(msg.payload + 12, "disabled", 3) == 0) {
+        setColor(StatusLEDColor::RED);
+    } else if (std::strncmp(msg.payload + 12, "connecting", 10) == 0) {
+        setColor(StatusLEDColor::YELLOW);
+    } else if (std::strncmp(msg.payload + 12, "connected", 5) == 0) {
+        setColor(StatusLEDColor::BLUE);
+    }
+    return ESP_OK;
+#else
+    (void)msg;
+    return ESP_ERR_NOT_SUPPORTED;
+#endif
+}
+
 } // namespace utils

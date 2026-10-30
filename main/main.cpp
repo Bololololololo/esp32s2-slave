@@ -10,15 +10,14 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "message_router.h"
+#include "mqtt.h"
 #include "sdkconfig.h"
 #include "service_manager.h"
 #include "status_led.h"
-#include "wifi_service.h"
 #include <stdio.h>
 
 using namespace utils;
 using namespace services;
-using namespace wifi;
 
 #define LOG_LEVEL ESP_LOG_INFO
 
@@ -36,19 +35,21 @@ void app_main(void) {
     StatusLED status_led;
     status_led.setColor(utils::StatusLEDColor::RED);
 
-    /* Start the WiFi service*/
+    /* Start the services */
     ServiceManager *serviceManager = ServiceManager::getInstance();
+#ifdef CONFIG_ENABLE_SERVICE_MSGR
     ESP_ERROR_CHECK(serviceManager->startService(ServiceType::SERVICE_MSGR));
+#endif
+#ifdef CONFIG_ENABLE_SERVICE_WIFI
     ESP_ERROR_CHECK(serviceManager->startService(ServiceType::SERVICE_WIFI));
+#endif
+#ifdef CONFIG_ENABLE_SERVICE_SENSORS
+    ESP_ERROR_CHECK(serviceManager->startService(ServiceType::SERVICE_SENSORS));
+#endif
 
-    /* Start the wifi provisioning */
-    const esp_err_t ret =
-        messageRouter::MessageRouter::getInstance()->publish(Message(COMPONENT_ID_LVGL_DISPLAY, "wifi:provision"));
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to publish Wi-Fi mode selection: %s", esp_err_to_name(ret));
-    }
-
-    status_led.setColor(utils::StatusLEDColor::GREEN);
+    /* Start the MQTT component */
+    std::shared_ptr<MqttComponent> mqttComponent = std::make_shared<MqttComponent>();
+    ESP_ERROR_CHECK(mqttComponent->init());
 
     while (1) {
         vTaskDelay(pdMS_TO_TICKS(100));

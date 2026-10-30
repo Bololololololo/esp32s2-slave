@@ -7,30 +7,30 @@
 #ifndef STATUS_LED_H
 #define STATUS_LED_H
 
+#include "component_interface.h"
 #include "led_strip.h"
+#include <memory>
 
-namespace utils
-{
-    enum class StatusLEDColor
-    {
-        OFF = 0,
-        RED,
-        GREEN,
-        BLUE,
-        YELLOW,
-    };
+namespace utils {
+enum class StatusLEDColor {
+    OFF = 0,
+    RED,
+    GREEN,
+    BLUE,
+    YELLOW,
+};
 
-    class StatusLED
-    {
-    public:
-        StatusLED();
-        ~StatusLED();
+class StatusLED : public ComponentInterface, public std::enable_shared_from_this<StatusLED> {
+  public:
+    StatusLED();
+    ~StatusLED();
 
-        void setColor(StatusLEDColor led_color);
+    void setColor(StatusLEDColor led_color);
 
-    private:
-        led_strip_handle_t led_strip{NULL};
-    };
-}
+  private:
+    esp_err_t messageHandler(const Message &msg) override;
+    led_strip_handle_t led_strip{NULL};
+};
+} // namespace utils
 
 #endif // STATUS_LED_H
