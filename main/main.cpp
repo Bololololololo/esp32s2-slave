@@ -9,6 +9,7 @@
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "hw069.h"
 #include "message_router.h"
 #include "mqtt.h"
 #include "sdkconfig.h"
@@ -51,7 +52,13 @@ void app_main(void) {
     std::shared_ptr<MqttComponent> mqttComponent = std::make_shared<MqttComponent>();
     ESP_ERROR_CHECK(mqttComponent->init());
 
+    ESP_LOGI(TAG, "Initializing HW-069 (TM1637) display...");
+    tm1637_init();
+
+    uint16_t counter = 0;
     while (1) {
+        tm1637_display_number(counter, (counter % 2 == 0));
+        counter = (counter + 1) % 10000;
         vTaskDelay(pdMS_TO_TICKS(100));
     }
 }
