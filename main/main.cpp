@@ -14,6 +14,7 @@
 #include "hw069.h"
 #include "message_router.h"
 #include "mqtt.h"
+#include "nvs_helpers.hpp"
 #include "sdkconfig.h"
 #include "service_manager.h"
 #include "status_led.h"
@@ -30,8 +31,35 @@ using namespace services;
 static const char *TAG = "main";
 
 void log_firmware_version(void) {
+    char version[32];
+    size_t required_size = sizeof(version);
     const esp_app_desc_t *app_desc = esp_app_get_description();
-    ESP_LOGI("VERSION", "Running Firmware Version: %s", app_desc->version);
+
+    esp_err_t err = NvsHelpers::read_nvs_value("fw_vers", version, required_size);
+    if (err == ESP_OK) {
+        if (strcmp(version, app_desc->version) != 0) {
+            ESP_LOGW("VERSION", "Firmware version mismatch! NVS: %s, Running: %s", version, app_desc->version);
+            esp_err_t err = NvsHelpers::write_nvs_value("fw_vers", app_desc->version);
+            if (err != ESP_OK) {
+                ESP_LOGE("VERSION", "Failed to update firmware version in NVS: %s", esp_err_to_name(err));
+            } else {
+                ESP_LOGI("VERSION", "Firmware version updated successfully in NVS.");
+            }
+        }
+    } else if (err == ESP_ERR_NVS_NOT_FOUND) {
+        ESP_LOGI("VERSION", "Firmware version not found in NVS.");
+        esp_err_t err = NvsHelpers::write_nvs_value("fw_vers", app_desc->version);
+        if (err != ESP_OK) {
+            ESP_LOGE("VERSION", "Failed to write firmware version to NVS: %s", esp_err_to_name(err));
+        } else {
+            ESP_LOGI("VERSION", "Firmware version written successfully to NVS: %s", app_desc->version);
+        }
+    } else {
+        ESP_LOGE("VERSION", "Failed to read firmware version from NVS: %s", esp_err_to_name(err));
+    }
+
+    ESP_LOGI("VERSION", "Printing all NVS entries for debugging purposes:");
+    NvsHelpers::print_all_nvs_entries();
 }
 
 extern "C" {
@@ -42,7 +70,9 @@ void app_main(void) {
     /* Set log level  */
     esp_log_level_set("*", LOG_LEVEL);
 
-    log_firmware_version();
+    /* Init nvs */
+    NvsHelpers::init_nvs_with_reset_on_failure();
+    NvsHelpers::check_and_store_embedded_certificate();
 
     /* Check if the running firmware is in a pending verification state and confirm it */
     const esp_partition_t *running = esp_ota_get_running_partition();
@@ -62,14 +92,17 @@ void app_main(void) {
         }
     }
 
+    /* save firmware version */
+    log_firmware_version();
+
     /* Config buttons */
-    ButtonManager::Config config = {.pins = {GPIO_NUM_11, GPIO_NUM_12, GPIO_NUM_13, GPIO_NUM_14},
-                                    .poll_interval_ms = 50};
+    // ButtonManager::Config config = {.pins = {GPIO_NUM_11, GPIO_NUM_12, GPIO_NUM_13, GPIO_NUM_14},
+    //                                 .poll_interval_ms = 50};
 
     // Instantiate and start the button manager
-    static ButtonManager buttons(config);
-    buttons.init();
-    buttons.start();
+    // static ButtonManager buttons(config);
+    // buttons.init();
+    // buttons.start();
 
     /* Configure the peripheral according to the LED type */
     StatusLED status_led;
@@ -91,6 +124,6 @@ void app_main(void) {
 #endif
 
     while (1) {
-        vTaskDelay(pdMS_TO_TICKS(100));
+        vTaskDelay(pdMS_TO_TICKS(200));
     }
 }
