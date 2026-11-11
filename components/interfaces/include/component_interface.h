@@ -4,16 +4,25 @@
 #include "componentIds.h"
 #include "esp_err.h"
 #include <cstring>
+#include <string>
 
 struct Message {
-    ComponentId id;
+    ComponentId sender;
+    ComponentId recipient;
     char payload[256];
 
-    Message() = default;
-    // Constructor that accepts a std::string variable
-    Message(ComponentId id, const std::string &str) : id(id) {
+    Message() : sender(COMPONENT_ID_ALL), recipient(COMPONENT_ID_ALL), payload{} {
+    }
+
+    // Two-argument messages retain sender-based broadcast semantics.
+    Message(ComponentId sender, const std::string &str) : sender(sender), recipient(COMPONENT_ID_ALL) {
         std::strncpy(payload, str.c_str(), sizeof(payload) - 1);
-        payload[sizeof(payload) - 1] = '\0'; // Guarantee null-termination
+        payload[sizeof(payload) - 1] = '\0';
+    }
+
+    Message(ComponentId sender, ComponentId recipient, const std::string &str) : sender(sender), recipient(recipient) {
+        std::strncpy(payload, str.c_str(), sizeof(payload) - 1);
+        payload[sizeof(payload) - 1] = '\0';
     }
 };
 

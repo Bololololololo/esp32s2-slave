@@ -50,6 +50,13 @@ endmenu
 
 
 menu "Bolo's project settings"
+    menu "Firmware version"
+        config FIRMWARE_VERSION
+            string "Firmware version"
+            default "1.0.0"
+            help
+                Define the firmware version for the project. This version will be used for OTA update checks and logging.
+    endmenu
     menu "Services"
         config ENABLE_SERVICE_WIFI
             bool "Enable WiFi Service"
@@ -68,9 +75,13 @@ menu "Bolo's project settings"
             default y
             help
                 Enables the sensors service, which allows the system to read data from various sensors and process it accordingly.
-    endmenu
 
-    menu "GUI"
+        config ENABLE_SERVICE_OTA
+            bool "Enable OTA Updates"
+            default y
+            help
+                Enables the OTA update service, which allows the system to receive and apply over-the-air updates.
+                
         config ENABLE_SERVICE_GUI_DIGITAL_DISPLAY
             bool "Enable GUI Digital Display Service"
             default y

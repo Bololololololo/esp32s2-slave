@@ -10,15 +10,15 @@ using namespace messageRouter;
 namespace services {
 class MessageRouterService : public ServiceInterface {
   public:
-    MessageRouterService() : ServiceInterface(ServiceType::SERVICE_MSGR) {
+    MessageRouterService() : ServiceInterface(ServiceType::SERVICE_MSGR, "MessageRouterSvc", 3072) {
     }
-    ~MessageRouterService() override = default;
-
-    void start() override;
-    void stop() override;
+    ~MessageRouterService() override {
+        stop();
+    }
 
   private:
-    std::unique_ptr<MessageRouter> messageRouter;
+    esp_err_t onStart() override;
+    void onStop() override;
 };
 
 } // namespace services

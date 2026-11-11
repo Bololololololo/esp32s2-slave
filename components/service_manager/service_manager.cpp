@@ -10,6 +10,9 @@
 #ifdef CONFIG_ENABLE_SERVICE_WIFI
 #include "wifi_service.h"
 #endif
+#ifdef CONFIG_ENABLE_SERVICE_OTA
+#include "ota_service.h"
+#endif
 #include <stdio.h>
 
 static const char *TAG = "service-manager";
@@ -26,13 +29,15 @@ ServiceManager::ServiceManager(_cons) {
 #ifdef CONFIG_ENABLE_SERVICE_SENSORS
     this->servicesMap.emplace(ServiceType::SERVICE_SENSORS, std::make_unique<SensorsService>());
 #endif
+#ifdef CONFIG_ENABLE_SERVICE_OTA
+    this->servicesMap.emplace(ServiceType::SERVICE_OTA, std::make_unique<OTAService>());
+#endif
 }
 
 esp_err_t ServiceManager::startService(const ServiceType &serviceType) {
     auto it = this->servicesMap.find(serviceType);
     if (it != this->servicesMap.end()) {
-        it->second->start();
-        return ESP_OK;
+        return it->second->start();
     }
     ESP_LOGE(TAG, "Service %d not found", static_cast<int>(serviceType));
     return ESP_ERR_NOT_FOUND;
@@ -41,8 +46,7 @@ esp_err_t ServiceManager::startService(const ServiceType &serviceType) {
 esp_err_t ServiceManager::stopService(const ServiceType &serviceType) {
     auto it = this->servicesMap.find(serviceType);
     if (it != this->servicesMap.end()) {
-        it->second->stop();
-        return ESP_OK;
+        return it->second->stop();
     }
     ESP_LOGE(TAG, "Service %d not found", static_cast<int>(serviceType));
     return ESP_ERR_NOT_FOUND;

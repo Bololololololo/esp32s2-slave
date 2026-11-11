@@ -30,6 +30,7 @@ class StatusLED : public ComponentInterface, public std::enable_shared_from_this
   private:
     esp_err_t messageHandler(const Message &msg) override;
     led_strip_handle_t led_strip{NULL};
+    std::shared_ptr<StatusLED> messageSubscriber;
 };
 } // namespace utils
 

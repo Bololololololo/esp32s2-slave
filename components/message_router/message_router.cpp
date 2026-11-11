@@ -1,7 +1,9 @@
 #include "message_router.h"
 #include "esp_check.h"
+#include <algorithm>
 #include <cstring>
 #include <esp_log.h>
+#include <utility>
 
 static const char *TAG = "message_router";
 
@@ -19,14 +21,22 @@ static const char *messageLogPayload(const Message &message) {
 static void printSubscribersDb() {
     std::lock_guard<std::recursive_mutex> lock(MessageRouter::getInstance()->getDbMutex());
     ESP_LOGI(TAG, "------------------------------------------------------------");
-    ESP_LOGI(TAG, "Current Subscribers Database:");
-    auto &subscribersDB = MessageRouter::getInstance()->getSubscribersDB();
+    ESP_LOGI(TAG, "Current Sender Subscriptions:");
+    auto &subscribersDB = MessageRouter::getInstance()->getSourceSubscribersDB();
     for (const auto &entry : subscribersDB) {
-        ComponentId sourceId = entry.first;
+        ComponentId sender = entry.first;
         const auto &subscribers = entry.second;
 
-        ESP_LOGI(TAG, "Source Component ID: %s", componentIdToString[sourceId].c_str());
+        ESP_LOGI(TAG, "Sender Component ID: %s", componentIdToString[sender].c_str());
         for (const auto &subscriber : subscribers) {
+            ESP_LOGI(TAG, "  Subscriber Component ID: %s", componentIdToString[subscriber->getComponentId()].c_str());
+        }
+    }
+    ESP_LOGI(TAG, "Current Recipient Subscriptions:");
+    auto &recipientSubscribersDB = MessageRouter::getInstance()->getRecipientSubscribersDB();
+    for (const auto &entry : recipientSubscribersDB) {
+        ESP_LOGI(TAG, "Message recipient: %s", componentIdToString[entry.first].c_str());
+        for (const auto &subscriber : entry.second) {
             ESP_LOGI(TAG, "  Subscriber Component ID: %s", componentIdToString[subscriber->getComponentId()].c_str());
         }
     }
@@ -41,51 +51,65 @@ void MessageRouter::routerTask(void *pvParameters) {
     for (;;) {
         // Block indefinitely until a message arrives (no unnecessary wakeups)
         if (xQueueReceive(xRouterQueue, &receivedMsg, portMAX_DELAY) == pdPASS) {
-            ESP_LOGI(TAG, "Received message %s: id %s", messageLogPayload(receivedMsg),
-                     componentIdToString[receivedMsg.id].c_str());
+            ESP_LOGI(TAG, "Received message %s: from %s to %s", messageLogPayload(receivedMsg),
+                     componentIdToString[receivedMsg.sender].c_str(),
+                     componentIdToString[receivedMsg.recipient].c_str());
             {
-                // Acquire lock and copy subscribers to avoid holding lock during
-                // callback
-                std::vector<std::shared_ptr<ComponentInterface>> subscribers_copy;
+                // Copy subscribers while locked, then call handlers without holding the mutex.
+                std::vector<std::shared_ptr<ComponentInterface>> subscribers_to_notify;
                 std::vector<std::shared_ptr<ComponentInterface>> wildcard_subscribers_copy;
 
                 {
                     std::lock_guard<std::recursive_mutex> lock(router->getDbMutex());
-                    auto &subscribersDB = router->getSubscribersDB();
+                    auto &sourceSubscribersDB = router->getSourceSubscribersDB();
+                    auto &recipientSubscribersDB = router->getRecipientSubscribersDB();
 
-                    // Single lookup: use find() iterator instead of find() + operator[]
-                    auto it = subscribersDB.find(receivedMsg.id);
-                    if (it != subscribersDB.end()) {
-                        subscribers_copy = it->second; // Make a copy while holding the lock
-                    }
-
-                    // Also deliver to wildcard subscribers (COMPONENT_ID_ALL)
-                    if (receivedMsg.id != COMPONENT_ID_ALL) {
-                        auto wildcard_it = subscribersDB.find(COMPONENT_ID_ALL);
-                        if (wildcard_it != subscribersDB.end()) {
-                            wildcard_subscribers_copy = wildcard_it->second; // Copy
+                    auto sourceIt = sourceSubscribersDB.find(receivedMsg.sender);
+                    if (sourceIt != sourceSubscribersDB.end()) {
+                        for (const auto &subscriber : sourceIt->second) {
+                            if (subscriber->getComponentId() != receivedMsg.sender &&
+                                std::find(subscribers_to_notify.begin(), subscribers_to_notify.end(), subscriber) ==
+                                    subscribers_to_notify.end()) {
+                                subscribers_to_notify.push_back(subscriber);
+                            }
                         }
                     }
-                } // Release lock before calling messageHandler
 
-                // Deliver to specific subscribers outside lock (exclude publisher)
-                for (const auto &subscriber : subscribers_copy) {
-                    // Don't deliver to the publisher itself
-                    if (subscriber->getComponentId() != receivedMsg.id) {
-                        subscriber->messageHandler(receivedMsg);
+                    if (receivedMsg.recipient != COMPONENT_ID_ALL) {
+                        auto recipientIt = recipientSubscribersDB.find(receivedMsg.recipient);
+                        if (recipientIt != recipientSubscribersDB.end()) {
+                            for (const auto &subscriber : recipientIt->second) {
+                                if (std::find(subscribers_to_notify.begin(), subscribers_to_notify.end(), subscriber) ==
+                                    subscribers_to_notify.end()) {
+                                    subscribers_to_notify.push_back(subscriber);
+                                }
+                            }
+                        }
+                    }
+
+                    auto wildcardIt = sourceSubscribersDB.find(COMPONENT_ID_ALL);
+                    if (wildcardIt != sourceSubscribersDB.end()) {
+                        for (const auto &subscriber : wildcardIt->second) {
+                            if (subscriber->getComponentId() != receivedMsg.sender &&
+                                std::find(subscribers_to_notify.begin(), subscribers_to_notify.end(), subscriber) ==
+                                    subscribers_to_notify.end()) {
+                                wildcard_subscribers_copy.push_back(subscriber);
+                            }
+                        }
                     }
                 }
 
-                // Deliver to wildcard subscribers outside lock (exclude publisher)
+                for (const auto &subscriber : subscribers_to_notify) {
+                    subscriber->messageHandler(receivedMsg);
+                }
+
                 for (const auto &subscriber : wildcard_subscribers_copy) {
-                    // Don't deliver to the publisher itself
-                    if (subscriber->getComponentId() != receivedMsg.id) {
-                        subscriber->messageHandler(receivedMsg);
-                    }
+                    subscriber->messageHandler(receivedMsg);
                 }
 
-                if (subscribers_copy.empty() && wildcard_subscribers_copy.empty()) {
-                    ESP_LOGW(TAG, "No subscribers found for message id: %d", receivedMsg.id);
+                if (subscribers_to_notify.empty() && wildcard_subscribers_copy.empty()) {
+                    ESP_LOGW(TAG, "No subscribers for message from %d to %d",
+                             static_cast<int>(receivedMsg.sender), static_cast<int>(receivedMsg.recipient));
                 }
             }
         }
@@ -103,7 +127,8 @@ MessageRouter::MessageRouter(_cons) {
 }
 
 esp_err_t MessageRouter::publish(const Message &message) {
-    ESP_LOGI(TAG, "Publishing message %s: id %s", messageLogPayload(message), componentIdToString[message.id].c_str());
+    ESP_LOGI(TAG, "Publishing message %s: from %s to %s", messageLogPayload(message),
+             componentIdToString[message.sender].c_str(), componentIdToString[message.recipient].c_str());
     if (xQueueSend(xRouterQueue, &message, portMAX_DELAY) != pdPASS) {
         ESP_LOGE(TAG, "Failed to send message to router queue");
         return ESP_FAIL;
@@ -111,33 +136,76 @@ esp_err_t MessageRouter::publish(const Message &message) {
     return ESP_OK;
 }
 
-esp_err_t MessageRouter::subscribe(std::shared_ptr<ComponentInterface> subscriber, ComponentId sourceComponentId) {
-    ESP_LOGI(TAG, "Component %s subscribed to messages from: %s",
-             componentIdToString[subscriber->getComponentId()].c_str(), componentIdToString[sourceComponentId].c_str());
-
-    if (subscriber != nullptr) {
-        std::lock_guard<std::recursive_mutex> lock(dbMutex);
-        subscribersDB[sourceComponentId].push_back(subscriber);
+esp_err_t MessageRouter::subscribe(std::shared_ptr<ComponentInterface> subscriber) {
+    if (subscriber == nullptr) {
+        return ESP_ERR_INVALID_ARG;
     }
 
-    // printSubscribersDb();
+    ESP_LOGI(TAG, "Component %s subscribed to messages addressed to itself",
+             componentIdToString[subscriber->getComponentId()].c_str());
+
+    std::lock_guard<std::recursive_mutex> lock(dbMutex);
+    auto &subscribers = recipientSubscribersDB[subscriber->getComponentId()];
+    if (std::find(subscribers.begin(), subscribers.end(), subscriber) == subscribers.end()) {
+        subscribers.push_back(std::move(subscriber));
+    }
     return ESP_OK;
 }
 
-esp_err_t MessageRouter::unsubscribe(std::shared_ptr<ComponentInterface> subscriber, ComponentId sourceComponentId) {
-    ESP_LOGI(TAG, "Component %s unsubscribed from messages from: %s",
-             componentIdToString[subscriber->getComponentId()].c_str(), componentIdToString[sourceComponentId].c_str());
-
-    if (subscriber != nullptr) {
-        std::lock_guard<std::recursive_mutex> lock(dbMutex);
-        auto it = subscribersDB.find(sourceComponentId);
-        if (it != subscribersDB.end()) {
-            auto &subscribers = it->second;
-            subscribers.erase(std::remove(subscribers.begin(), subscribers.end(), subscriber), subscribers.end());
-        }
+esp_err_t MessageRouter::subscribe(std::shared_ptr<ComponentInterface> subscriber, ComponentId sender) {
+    if (subscriber == nullptr) {
+        return ESP_ERR_INVALID_ARG;
     }
 
-    // printSubscribersDb();
+    ESP_LOGI(TAG, "Component %s subscribed to messages from: %s",
+             componentIdToString[subscriber->getComponentId()].c_str(), componentIdToString[sender].c_str());
+
+    std::lock_guard<std::recursive_mutex> lock(dbMutex);
+    auto &subscribers = sourceSubscribersDB[sender];
+    if (std::find(subscribers.begin(), subscribers.end(), subscriber) == subscribers.end()) {
+        subscribers.push_back(std::move(subscriber));
+    }
+
+    return ESP_OK;
+}
+
+esp_err_t MessageRouter::unsubscribe(std::shared_ptr<ComponentInterface> subscriber) {
+    if (subscriber == nullptr) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    ESP_LOGI(TAG, "Component %s unsubscribed from messages addressed to itself",
+             componentIdToString[subscriber->getComponentId()].c_str());
+
+    std::lock_guard<std::recursive_mutex> lock(dbMutex);
+    auto it = recipientSubscribersDB.find(subscriber->getComponentId());
+    if (it != recipientSubscribersDB.end()) {
+        auto &subscribers = it->second;
+        subscribers.erase(std::remove(subscribers.begin(), subscribers.end(), subscriber), subscribers.end());
+        if (subscribers.empty()) {
+            recipientSubscribersDB.erase(it);
+        }
+    }
+    return ESP_OK;
+}
+
+esp_err_t MessageRouter::unsubscribe(std::shared_ptr<ComponentInterface> subscriber, ComponentId sender) {
+    if (subscriber == nullptr) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    ESP_LOGI(TAG, "Component %s unsubscribed from messages from: %s",
+             componentIdToString[subscriber->getComponentId()].c_str(), componentIdToString[sender].c_str());
+
+    std::lock_guard<std::recursive_mutex> lock(dbMutex);
+    auto it = sourceSubscribersDB.find(sender);
+    if (it != sourceSubscribersDB.end()) {
+        auto &subscribers = it->second;
+        subscribers.erase(std::remove(subscribers.begin(), subscribers.end(), subscriber), subscribers.end());
+        if (subscribers.empty()) {
+            sourceSubscribersDB.erase(it);
+        }
+    }
     return ESP_OK;
 }
 

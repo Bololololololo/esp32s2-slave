@@ -14,6 +14,7 @@ class MqttComponent : public ComponentInterface, public std::enable_shared_from_
   private:
 #ifdef CONFIG_ENABLE_SERVICE_WIFI
     bool m_subscribed{false};
+    bool m_defaultSubscribed{false};
 #endif
 
     esp_err_t messageHandler(const Message &msg) override;

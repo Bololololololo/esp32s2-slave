@@ -814,20 +814,15 @@ CONFIG_ESPTOOLPY_MONITOR_BAUD=115200
 #
 # Partition Table
 #
-# default:
-CONFIG_PARTITION_TABLE_SINGLE_APP=y
-# default:
+# CONFIG_PARTITION_TABLE_SINGLE_APP is not set
 # CONFIG_PARTITION_TABLE_SINGLE_APP_LARGE is not set
-# default:
-# CONFIG_PARTITION_TABLE_TWO_OTA is not set
-# default:
+CONFIG_PARTITION_TABLE_TWO_OTA=y
 # CONFIG_PARTITION_TABLE_TWO_OTA_LARGE is not set
-# default:
 # CONFIG_PARTITION_TABLE_CUSTOM is not set
 # default:
 CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"
 # default:
-CONFIG_PARTITION_TABLE_FILENAME="partitions_singleapp.csv"
+CONFIG_PARTITION_TABLE_FILENAME="partitions_two_ota.csv"
 # default:
 CONFIG_PARTITION_TABLE_OFFSET=0x8000
 # default:
@@ -855,6 +850,33 @@ CONFIG_BLINK_GPIO=18
 # default:
 CONFIG_BLINK_PERIOD=1000
 # end of Example Configuration
+
+#
+# Bolo's project settings
+#
+
+#
+# Services
+#
+# default:
+CONFIG_ENABLE_SERVICE_WIFI=y
+# default:
+CONFIG_ENABLE_SERVICE_MSGR=y
+# default:
+CONFIG_ENABLE_SERVICE_SENSORS=y
+# default:
+CONFIG_ENABLE_SERVICE_OTA=y
+# default:
+CONFIG_ENABLE_SERVICE_GUI_DIGITAL_DISPLAY=y
+# end of Services
+
+# default:
+# CONFIG_STORAGE_TESTS is not set
+# default:
+# CONFIG_UTILS_TESTS is not set
+# default:
+# CONFIG_MSGR_TESTS is not set
+# end of Bolo's project settings
 
 #
 # Compiler options
@@ -3789,3 +3811,34 @@ CONFIG_SUPPRESS_SELECT_DEBUG_OUTPUT=y
 # CONFIG_SUPPORT_TERMIOS is not set
 CONFIG_SEMIHOSTFS_MAX_MOUNT_POINTS=1
 # End of deprecated options
+
+#
+# ESP-MQTT Configurations
+#
+# default:
+CONFIG_MQTT_PROTOCOL_311=y
+# default:
+# CONFIG_MQTT_PROTOCOL_5 is not set
+# default:
+CONFIG_MQTT_TRANSPORT_SSL=y
+# default:
+CONFIG_MQTT_TRANSPORT_WEBSOCKET=y
+# default:
+CONFIG_MQTT_TRANSPORT_WEBSOCKET_SECURE=y
+# default:
+# CONFIG_MQTT_MSG_ID_INCREMENTAL is not set
+# default:
+# CONFIG_MQTT_SKIP_PUBLISH_IF_DISCONNECTED is not set
+# default:
+# CONFIG_MQTT_REPORT_DELETED_MESSAGES is not set
+# default:
+# CONFIG_MQTT_USE_CUSTOM_CONFIG is not set
+# default:
+# CONFIG_MQTT_TASK_CORE_SELECTION_ENABLED is not set
+# default:
+# CONFIG_MQTT_CUSTOM_OUTBOX is not set
+# end of ESP-MQTT Configurations
+# end of Component config
+
+# default:
+# CONFIG_IDF_EXPERIMENTAL_FEATURES is not set

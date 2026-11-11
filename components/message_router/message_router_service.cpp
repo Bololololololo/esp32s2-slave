@@ -6,20 +6,14 @@ static const char *TAG = "msgr-service";
 
 namespace services {
 
-void MessageRouterService::start() {
-    // Start the Message Router service
+esp_err_t MessageRouterService::onStart() {
     ESP_LOGI(TAG, "Message router service starting");
-    this->setServiceState(SERVICE_RUNNING);
-    this->messageRouter = MessageRouter::instanceFactory();
+    MessageRouter::getInstance();
     ESP_LOGI(TAG, "Message router service started successfully");
-    // Message router is now initialized and running the router task
+    return ESP_OK;
 }
 
-void MessageRouterService::stop() {
-    // Stop the Message Router service
-    this->setServiceState(SERVICE_STOPPED);
-    // Clean up the message router
-    this->messageRouter.reset();
+void MessageRouterService::onStop() {
 }
 
 } // namespace services

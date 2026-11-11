@@ -14,13 +14,15 @@ namespace services {
 class SensorsService : public ServiceInterface {
   public:
     SensorsService();
-    ~SensorsService() override = default;
-
-    void start() override;
-    void stop() override;
+    ~SensorsService() override {
+        stop();
+    }
 
   private:
-    TaskHandle_t measureTaskHandle;
+    esp_err_t onStart() override;
+    void run() override;
+    void onStop() override;
+
     std::unique_ptr<ProximitySensorComponent> proximitySensorComponent;
 };
 

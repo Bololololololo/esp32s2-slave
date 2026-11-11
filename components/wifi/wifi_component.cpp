@@ -113,8 +113,17 @@ esp_err_t WifiComponent::init() {
         return ESP_ERR_INVALID_STATE;
     }
 
-    esp_err_t ret = MessageRouter::getInstance()->subscribe(shared_from_this(), ComponentId::COMPONENT_ID_LVGL_DISPLAY);
+    const auto self = shared_from_this();
+    esp_err_t ret = MessageRouter::getInstance()->subscribe(self);
     if (ret != ESP_OK) {
+        return ret;
+    }
+    m_defaultSubscribed = true;
+
+    ret = MessageRouter::getInstance()->subscribe(self, ComponentId::COMPONENT_ID_LVGL_DISPLAY);
+    if (ret != ESP_OK) {
+        MessageRouter::getInstance()->unsubscribe(self);
+        m_defaultSubscribed = false;
         return ret;
     }
     m_subscribed = true;
@@ -178,6 +187,10 @@ esp_err_t WifiComponent::init() {
 }
 
 void WifiComponent::stop() {
+    if (m_defaultSubscribed) {
+        MessageRouter::getInstance()->unsubscribe(shared_from_this());
+        m_defaultSubscribed = false;
+    }
     if (m_subscribed) {
         MessageRouter::getInstance()->unsubscribe(shared_from_this(), ComponentId::COMPONENT_ID_LVGL_DISPLAY);
         m_subscribed = false;
@@ -214,14 +227,26 @@ void WifiComponent::stop() {
 }
 
 esp_err_t WifiComponent::messageHandler(const Message &msg) {
-    if (msg.id != ComponentId::COMPONENT_ID_LVGL_DISPLAY) {
+    if (msg.sender != ComponentId::COMPONENT_ID_LVGL_DISPLAY && msg.recipient != ComponentId::COMPONENT_ID_WIFI) {
         return ESP_ERR_INVALID_ARG;
     }
 
-    if (std::strncmp(msg.payload, "wifi:", 5) != 0) {
+    if (msg.recipient != ComponentId::COMPONENT_ID_WIFI && std::strncmp(msg.payload, "wifi:", 5) != 0) {
         return ESP_ERR_NOT_SUPPORTED;
     }
-    const esp_err_t ret = applyMode(msg.payload + 5);
+
+    if (std::strncmp(msg.payload, "wifi_status:request", 19) == 0) {
+        this->publishStatus(
+            m_provisioning ? "portal"
+                           : (m_connected ? "connected" : (m_stationConnectRequested ? "connecting" : "disabled")));
+        return ESP_OK;
+    }
+
+    const char *mode = msg.payload;
+    if (std::strncmp(msg.payload, "wifi:", 5) == 0) {
+        mode += 5;
+    }
+    const esp_err_t ret = applyMode(mode);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Could not apply Wi-Fi mode command: %s", esp_err_to_name(ret));
     }
@@ -397,7 +422,7 @@ esp_err_t WifiComponent::connectToNetwork(const char *ssid, const char *password
 
 void WifiComponent::publishStatus(const char *status) {
     const esp_err_t ret = MessageRouter::getInstance()->publish(
-        Message(ComponentId::COMPONENT_ID_WIFI, "wifi_status:" + std::string(status)));
+        Message(ComponentId::COMPONENT_ID_WIFI, COMPONENT_ID_ALL, "wifi_status:" + std::string(status)));
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to publish Wi-Fi status: %s", esp_err_to_name(ret));
     }
@@ -466,11 +491,11 @@ void WifiComponent::wifiEventHandler(void *arg, esp_event_base_t eventBase, int3
         self->m_connected = false;
         const auto *event = static_cast<wifi_event_sta_disconnected_t *>(eventData);
         ESP_LOGW(TAG, "Station disconnected (reason=%d); retrying", event ? event->reason : -1);
-        self->publishStatus("connecting");
         const esp_err_t ret = esp_wifi_connect();
         if (ret != ESP_OK) {
             ESP_LOGE(TAG, "Failed to retry station connection: %s", esp_err_to_name(ret));
         }
+        self->publishStatus("connecting");
     }
 }
 
@@ -482,7 +507,6 @@ void WifiComponent::ipEventHandler(void *arg, esp_event_base_t eventBase, int32_
 
     ESP_LOGI(TAG, "Connected to Wi-Fi");
     self->m_connected = true;
-    self->publishStatus("connected");
     if (self->m_provisioning) {
         self->m_provisioning = false;
         self->stopPortalServer();
@@ -493,6 +517,9 @@ void WifiComponent::ipEventHandler(void *arg, esp_event_base_t eventBase, int32_
             ESP_LOGI(TAG, "Provisioning AP stopped");
         }
     }
+
+    vTaskDelay(pdMS_TO_TICKS(100)); // Delay to ensure the network is stable before publishing status
+    self->publishStatus("connected");
 }
 
 esp_err_t WifiComponent::portalGetHandler(httpd_req_t *request) {

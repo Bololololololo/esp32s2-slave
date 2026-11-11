@@ -52,13 +52,17 @@ StatusLED::StatusLED() : ComponentInterface(ComponentId::COMPONENT_ID_STATUS_LED
     led_strip_clear(led_strip);
 
 #ifdef CONFIG_ENABLE_SERVICE_WIFI
-    ESP_ERROR_CHECK(
-        MessageRouter::getInstance()->subscribe(std::make_shared<StatusLED>(*this), ComponentId::COMPONENT_ID_WIFI));
+    messageSubscriber = std::make_shared<StatusLED>(*this);
+    ESP_ERROR_CHECK(MessageRouter::getInstance()->subscribe(messageSubscriber));
+    ESP_ERROR_CHECK(MessageRouter::getInstance()->subscribe(messageSubscriber, ComponentId::COMPONENT_ID_WIFI));
 #endif
 }
 
 StatusLED::~StatusLED() {
-    MessageRouter::getInstance()->unsubscribe(shared_from_this(), ComponentId::COMPONENT_ID_STATUS_LED);
+    if (messageSubscriber) {
+        MessageRouter::getInstance()->unsubscribe(messageSubscriber);
+        MessageRouter::getInstance()->unsubscribe(messageSubscriber, ComponentId::COMPONENT_ID_WIFI);
+    }
 }
 
 void StatusLED::setColor(StatusLEDColor led_color) {
@@ -84,7 +88,7 @@ void StatusLED::setColor(StatusLEDColor led_color) {
 
 esp_err_t StatusLED::messageHandler(const Message &msg) {
 #ifdef CONFIG_ENABLE_SERVICE_WIFI
-    if (msg.id != ComponentId::COMPONENT_ID_WIFI) {
+    if (msg.sender != ComponentId::COMPONENT_ID_WIFI) {
         return ESP_ERR_INVALID_ARG;
     }
 

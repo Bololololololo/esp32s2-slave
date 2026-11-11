@@ -47,6 +47,7 @@ class WifiComponent : public ComponentInterface, public std::enable_shared_from_
     bool m_connected{false};
     bool m_initialized{false};
     bool m_subscribed{false};
+    bool m_defaultSubscribed{false};
     char m_provisioningSsid[33]{};
     char m_provisioningPassword[17]{};
 };

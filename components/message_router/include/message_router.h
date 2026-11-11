@@ -25,8 +25,8 @@ class MessageRouter {
 
     mutable std::recursive_mutex dbMutex; // Protects subscribersDB from concurrent access
 
-    std::unordered_map<ComponentId, std::vector<std::shared_ptr<ComponentInterface>>>
-        subscribersDB; // Protected by dbMutex
+    std::unordered_map<ComponentId, std::vector<std::shared_ptr<ComponentInterface>>> sourceSubscribersDB;
+    std::unordered_map<ComponentId, std::vector<std::shared_ptr<ComponentInterface>>> recipientSubscribersDB;
 
     TaskHandle_t xRouterTask;
     QueueHandle_t xRouterQueue;
@@ -48,18 +48,24 @@ class MessageRouter {
         return instance.get();
     }
 
-    std::unordered_map<ComponentId, std::vector<std::shared_ptr<ComponentInterface>>> &getSubscribersDB() {
-        return subscribersDB;
+    std::unordered_map<ComponentId, std::vector<std::shared_ptr<ComponentInterface>>> &getSourceSubscribersDB() {
+        return sourceSubscribersDB;
+    }
+
+    std::unordered_map<ComponentId, std::vector<std::shared_ptr<ComponentInterface>>> &getRecipientSubscribersDB() {
+        return recipientSubscribersDB;
     }
 
     std::recursive_mutex &getDbMutex() const {
         return dbMutex;
     }
 
-    esp_err_t subscribe(std::shared_ptr<ComponentInterface> subscriber,
-                        ComponentId sourceComponentId = COMPONENT_ID_ALL);
-    esp_err_t unsubscribe(std::shared_ptr<ComponentInterface> subscriber,
-                          ComponentId sourceComponentId = COMPONENT_ID_ALL);
+    // The one-argument form subscribes to messages addressed to the component itself.
+    esp_err_t subscribe(std::shared_ptr<ComponentInterface> subscriber);
+    // The two-argument form subscribes to messages published by the specified sender.
+    esp_err_t subscribe(std::shared_ptr<ComponentInterface> subscriber, ComponentId sender);
+    esp_err_t unsubscribe(std::shared_ptr<ComponentInterface> subscriber);
+    esp_err_t unsubscribe(std::shared_ptr<ComponentInterface> subscriber, ComponentId sender);
     esp_err_t publish(const Message &message);
 };
 } // namespace messageRouter

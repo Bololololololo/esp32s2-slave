@@ -17,6 +17,7 @@ namespace sensors {
 ProximitySensorComponent::ProximitySensorComponent() : ComponentInterface(COMPONENT_ID_PROXIMITY_SENSOR) {
     MessageRouter::getInstance()->subscribe(std::make_shared<ProximitySensorComponent>(*this));
 }
+
 void ProximitySensorComponent::init() {
     ESP_LOGI(TAG, "Initializing proximity sensor...");
     // Configure Trigger pin as output

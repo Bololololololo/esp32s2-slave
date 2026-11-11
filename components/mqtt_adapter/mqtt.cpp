@@ -12,8 +12,17 @@ MqttComponent::MqttComponent() : ComponentInterface(ComponentId::COMPONENT_ID_MQ
 
 esp_err_t MqttComponent::init() {
 #ifdef CONFIG_ENABLE_SERVICE_WIFI
-    esp_err_t ret = MessageRouter::getInstance()->subscribe(shared_from_this(), ComponentId::COMPONENT_ID_WIFI);
+    const auto self = shared_from_this();
+    esp_err_t ret = MessageRouter::getInstance()->subscribe(self);
     if (ret != ESP_OK) {
+        return ret;
+    }
+    m_defaultSubscribed = true;
+
+    ret = MessageRouter::getInstance()->subscribe(self, ComponentId::COMPONENT_ID_WIFI);
+    if (ret != ESP_OK) {
+        MessageRouter::getInstance()->unsubscribe(self);
+        m_defaultSubscribed = false;
         return ret;
     }
     m_subscribed = true;
@@ -23,6 +32,10 @@ esp_err_t MqttComponent::init() {
 
 void MqttComponent::stop() {
 #ifdef CONFIG_ENABLE_SERVICE_WIFI
+    if (m_defaultSubscribed) {
+        MessageRouter::getInstance()->unsubscribe(shared_from_this());
+        m_defaultSubscribed = false;
+    }
     if (m_subscribed) {
         MessageRouter::getInstance()->unsubscribe(shared_from_this(), ComponentId::COMPONENT_ID_WIFI);
         m_subscribed = false;
@@ -32,9 +45,9 @@ void MqttComponent::stop() {
 
 esp_err_t MqttComponent::messageHandler(const Message &msg) {
 #ifdef CONFIG_ENABLE_SERVICE_WIFI
-    ESP_LOGI("MqttComponent", "Received message from component %d: %s", msg.id, msg.payload);
+    ESP_LOGI("MqttComponent", "Received message from component %d: %s", msg.sender, msg.payload);
 
-    if (msg.id != ComponentId::COMPONENT_ID_WIFI) {
+    if (msg.sender != ComponentId::COMPONENT_ID_WIFI) {
         return ESP_ERR_INVALID_ARG;
     }
 

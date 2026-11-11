@@ -5,20 +5,19 @@
 #include "wifi_component.h"
 #include <memory>
 
-using namespace wifi;
-
 namespace services {
 class WifiService : public ServiceInterface {
   public:
-    WifiService() : ServiceInterface(ServiceType::SERVICE_WIFI) {
+    WifiService();
+    ~WifiService() override {
+        stop();
     }
-    ~WifiService() override = default;
-
-    void start() override;
-    void stop() override;
 
   private:
-    std::shared_ptr<WifiComponent> wifiComponent;
+    esp_err_t onStart() override;
+    void onStop() override;
+
+    std::shared_ptr<wifi::WifiComponent> wifiComponent;
 };
 
 } // namespace services
