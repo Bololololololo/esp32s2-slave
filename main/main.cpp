@@ -58,8 +58,8 @@ void log_firmware_version(void) {
         ESP_LOGE("VERSION", "Failed to read firmware version from NVS: %s", esp_err_to_name(err));
     }
 
-    ESP_LOGI("VERSION", "Printing all NVS entries for debugging purposes:");
-    NvsHelpers::print_all_nvs_entries();
+    // ESP_LOGI("VERSION", "Printing all NVS entries for debugging purposes:");
+    // NvsHelpers::print_all_nvs_entries();
 }
 
 extern "C" {
@@ -72,6 +72,8 @@ void app_main(void) {
 
     /* Init nvs */
     NvsHelpers::init_nvs_with_reset_on_failure();
+
+    /* Check and store the embedded certificate if it doesn't exist in NVS */
     NvsHelpers::check_and_store_embedded_certificate();
 
     /* Check if the running firmware is in a pending verification state and confirm it */

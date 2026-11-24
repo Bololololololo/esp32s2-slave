@@ -5,7 +5,7 @@ endif()
 
 idf_component_register(SRCS ${OTA_SRCS}
                     INCLUDE_DIRS "include"
-                    REQUIRES  message_router esp_https_ota bootloader_support nvs_flash app_update esp_wifi)
+                    REQUIRES  message_router esp_https_ota bootloader_support nvs_flash app_update esp_wifi utils)
 
 if(OTA_SRCS)
     target_compile_options(${COMPONENT_LIB} PUBLIC

@@ -4,14 +4,15 @@
 #include <stdlib.h>
 
 namespace utils {
+
 // Linker symbols generated for main/certs/cert.pem
 extern const char certificate_pem_start[] asm("_binary_cert_pem_start");
 extern const char certificate_pem_end[] asm("_binary_cert_pem_end");
 
-const char *TAG = "NvsHelpers";
-
 class NvsHelpers {
   public:
+    static constexpr const char *TAG = "NvsHelpers";
+
     static void init_nvs_with_reset_on_failure(void) {
         esp_err_t err = nvs_flash_init();
 

@@ -50,6 +50,13 @@ endmenu
 
 
 menu "Bolo's project settings"
+    menu "Certificate settings"
+        config OTA_CERT_NAME
+            string "OTA Certificate name"
+            default "root_ca"
+            help
+                Define the certificate name for the project. This name will be used to identify the certificate in the system.
+    endmenu
     menu "Firmware version"
         config FIRMWARE_VERSION
             string "Firmware version"

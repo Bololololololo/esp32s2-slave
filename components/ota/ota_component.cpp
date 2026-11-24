@@ -5,37 +5,17 @@
 #include "esp_wifi.h"
 #include "esp_wifi_remote.h"
 #include "message_router.h"
-
-static const char *TAG = "ota_update";
+#include "nvs_helpers.hpp"
 
 using namespace messageRouter;
+using namespace utils;
+
+#define TAG "OTAComponent"
 
 namespace ota {
 
 OTAComponent::OTAComponent(std::shared_ptr<OTAUpdateNotifier> updateNotifier)
     : ComponentInterface(COMPONENT_ID_OTA), updateNotifier(std::move(updateNotifier)) {
-    std::strncpy(server_cert_pem,
-                 "-----BEGIN CERTIFICATE-----\n"
-                 "MIIDETCCAfmgAwIBAgIUV5BWU/C+tuaOn9eYaxFCVmTZ3rswDQYJKoZIhvcNAQEL\n"
-                 "BQAwGDEWMBQGA1UEAwwNMTkyLjE2OC4xLjEyODAeFw0yNjExMDYxNDAwMTdaFw0y\n"
-                 "NzExMDYxNDAwMTdaMBgxFjAUBgNVBAMMDTE5Mi4xNjguMS4xMjgwggEiMA0GCSqG\n"
-                 "SIb3DQEBAQUAA4IBDwAwggEKAoIBAQCxWqs7zCyAX3U7n5/JUgn2ujG7w9Gib2Rp\n"
-                 "XdJFM9oMXUYQleJrxo0ZOPDyZo2jXyF1HK2QOjbyYSVQe0J0UzVQ2Oryk8PtQ7C+\n"
-                 "M5155ARN2pYsN2YjFtZBQJRQoKwAhRkkncqF6qv+SmP61Qyefj13k2TkD7qEH8yW\n"
-                 "u1ehYslQnKUiKw3BVdL5eBdGf3oYpoq/crAwbkG8yhqdWgzH1kqJVx+qGxqnoZc0\n"
-                 "cW+4uRFOROm4nxo8rtj4kFBK1ct/NIHS/QM/FDiiXl8dmwMxFHljihpiWIPp1M7/\n"
-                 "O6jFFQtiVGsd/bBUxfkl0e2BxnKbIZBopGZM2Sm9ADhSwNlDF6YBAgMBAAGjUzBR\n"
-                 "MB0GA1UdDgQWBBSJA3uDLCQAX9erlXGSK11sL4hHHjAfBgNVHSMEGDAWgBSJA3uD\n"
-                 "LCQAX9erlXGSK11sL4hHHjAPBgNVHRMBAf8EBTADAQH/MA0GCSqGSIb3DQEBCwUA\n"
-                 "A4IBAQCE8hYCL8rLZGlsfYno83HGxOFjnrgtwTNciqDGSsiKyQXvoo/WqZaPygKj\n"
-                 "IL7obqUDHCr/gwds/pwFQ/95traBa/VaxMedot3RosSf7xOUKBgiGiqGYRrydx16\n"
-                 "EApX+p/WhoGgQ32+AQIainkj/gVB8TpCgC+lMNKM8SK8s06ootzQLxuU9GigVEaS\n"
-                 "4SUepbAq5DdlcQymAAtlAPicLl0cYt6v7sMzCXNtxyG3r4zCdiaNLBu87JdSbObn\n"
-                 "wIUXqAsZzgu2IkTMZpHDRqNyR2q6n2WetxGV/0eDk3VTQaYZcK0b7hisF2VEshEW\n"
-                 "1rl46m9wWUEW0xuVMb8ytbJSgJze\n"
-                 "-----END CERTIFICATE-----\n",
-                 2500); // Ensure null-termination
-
     config = {
         .url = "",                   // Replace with your OTA update URL
         .cert_pem = server_cert_pem, // Pass CA certificate if using HTTPS/TLS
@@ -44,9 +24,13 @@ OTAComponent::OTAComponent(std::shared_ptr<OTAUpdateNotifier> updateNotifier)
 }
 
 esp_err_t OTAComponent::init() {
-    if (subscribed) {
-        return ESP_ERR_INVALID_STATE;
+    size_t cert_size = sizeof(server_cert_pem);
+    esp_err_t err = NvsHelpers::read_nvs_value(CONFIG_OTA_CERT_NAME, server_cert_pem, &cert_size);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to read server certificate from NVS: %s", esp_err_to_name(err));
+        return err;
     }
+
     const auto self = shared_from_this();
     const esp_err_t result = MessageRouter::getInstance()->subscribe(self);
     if (result == ESP_OK) {
