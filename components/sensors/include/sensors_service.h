@@ -1,5 +1,4 @@
-#ifndef _SENSORS_SERVICE_H_
-#define _SENSORS_SERVICE_H_
+#pragma once
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -27,5 +26,3 @@ class SensorsService : public ServiceInterface {
 };
 
 } // namespace services
-
-#endif // _SENSORS_SERVICE_H_

@@ -11,20 +11,20 @@ extern const char certificate_pem_end[] asm("_binary_cert_pem_end");
 
 class NvsHelpers {
   public:
-    static constexpr const char *TAG = "NvsHelpers";
+    static constexpr const char *TAG = "nvs-helpers";
 
     static void init_nvs_with_reset_on_failure(void) {
         esp_err_t err = nvs_flash_init();
 
         if (err == ESP_ERR_NVS_NO_FREE_PAGES || err == ESP_ERR_NVS_NEW_VERSION_FOUND) {
             // Partition structure changed or ran out of pages; attempt recovery erase
-            ESP_LOGW("NVS", "NVS partition needs erasing due to version mismatch or full pages.");
+            ESP_LOGW(TAG, "NVS partition needs erasing due to version mismatch or full pages.");
             ESP_ERROR_CHECK(nvs_flash_erase());
             err = nvs_flash_init();
         }
 
         if (err != ESP_OK) {
-            ESP_LOGE("NVS", "Critical NVS initialization failure: %s (0x%x)", esp_err_to_name(err), err);
+            ESP_LOGE(TAG, "Critical NVS initialization failure: %s (0x%x)", esp_err_to_name(err), err);
 
             // Give the UART log buffer time to transmit before restarting
             vTaskDelay(pdMS_TO_TICKS(500));
@@ -33,7 +33,7 @@ class NvsHelpers {
             esp_restart();
         }
 
-        ESP_LOGI("NVS", "NVS initialized successfully.");
+        ESP_LOGI(TAG, "NVS initialized successfully.");
     }
 
     // 1. Overload for 32-bit Signed Integers (passed by reference)
@@ -147,16 +147,15 @@ class NvsHelpers {
         esp_err_t err = read_nvs_value("root_ca", check_buf, &check_buf_len);
 
         if (err == ESP_ERR_NVS_NOT_FOUND) {
-            ESP_LOGI("NVS", "Certificate not found in NVS. Writing from embedded repo file...");
+            ESP_LOGI(TAG, "Certificate not found in NVS. Writing from embedded repo file...");
 
             // Use your binary blob overload to write the repo file into NVS
             esp_err_t err = write_nvs_value("root_ca", certificate_pem_start, cert_len);
             if (err != ESP_OK) {
-                ESP_LOGE("NVS", "Failed to write certificate to NVS: %s", esp_err_to_name(err));
+                ESP_LOGE(TAG, "Failed to write certificate to NVS: %s", esp_err_to_name(err));
             }
         } else {
-            ESP_LOGI("NVS", "Certificate already exists in NVS. No action needed. Error code: %s",
-                     esp_err_to_name(err));
+            ESP_LOGI(TAG, "Certificate already exists in NVS. No action needed. Error code: %s", esp_err_to_name(err));
         }
     }
 
@@ -164,7 +163,7 @@ class NvsHelpers {
         ESP_LOGI(TAG, "--- Starting NVS Flash Dump ---");
 
         nvs_iterator_t it = NULL;
-        esp_err_t err = nvs_entry_find("nvs", NULL, NVS_TYPE_ANY, &it);
+        esp_err_t err = nvs_entry_find(TAG, NULL, NVS_TYPE_ANY, &it);
 
         if (err != ESP_OK || it == NULL) {
             ESP_LOGI(TAG, "No NVS entries found in partition.");

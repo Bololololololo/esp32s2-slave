@@ -1,5 +1,4 @@
-#ifndef _PROXIMITY_SENSOR_COMP_H_
-#define _PROXIMITY_SENSOR_COMP_H_
+#pragma once
 
 #include "component_interface.h"
 
@@ -18,5 +17,3 @@ class ProximitySensorComponent : public ComponentInterface {
 };
 
 } // namespace sensors
-
-#endif // _PROXIMITY_SENSOR_COMP_H_

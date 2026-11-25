@@ -1,5 +1,4 @@
-#ifndef _WIFI_SERVICE_H_
-#define _WIFI_SERVICE_H_
+#pragma once
 
 #include "service_interface.h"
 #include "wifi_component.h"
@@ -21,5 +20,3 @@ class WifiService : public ServiceInterface {
 };
 
 } // namespace services
-
-#endif // _WIFI_SERVICE_H_

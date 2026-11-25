@@ -13,11 +13,14 @@
 #ifdef CONFIG_ENABLE_SERVICE_OTA
 #include "ota_service.h"
 #endif
+#ifdef CONFIG_ENABLE_SERVICE_MQTT
+#include "mqtt_service.h"
+#endif
 #include <stdio.h>
 
+namespace services {
 static const char *TAG = "service-manager";
 
-namespace services {
 ServiceManager::ServiceManager(_cons) {
     // Constructor implementation - initialize all services
 #ifdef CONFIG_ENABLE_SERVICE_MSGR
@@ -31,6 +34,9 @@ ServiceManager::ServiceManager(_cons) {
 #endif
 #ifdef CONFIG_ENABLE_SERVICE_OTA
     this->servicesMap.emplace(ServiceType::SERVICE_OTA, std::make_unique<OTAService>());
+#endif
+#ifdef CONFIG_ENABLE_SERVICE_MQTT
+    this->servicesMap.emplace(ServiceType::SERVICE_MQTT, std::make_unique<MqttService>());
 #endif
 }
 

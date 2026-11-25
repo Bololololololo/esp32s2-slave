@@ -5,9 +5,8 @@
 #include <esp_log.h>
 #include <utility>
 
-static const char *TAG = "message_router";
-
 namespace messageRouter {
+static const char *TAG = "message-router";
 
 static const char *messageLogPayload(const Message &message) {
     // static const char *const sensitivePrefix = "wifi_status:portal|";
@@ -108,8 +107,8 @@ void MessageRouter::routerTask(void *pvParameters) {
                 }
 
                 if (subscribers_to_notify.empty() && wildcard_subscribers_copy.empty()) {
-                    ESP_LOGW(TAG, "No subscribers for message from %d to %d",
-                             static_cast<int>(receivedMsg.sender), static_cast<int>(receivedMsg.recipient));
+                    ESP_LOGW(TAG, "No subscribers for message from %d to %d", static_cast<int>(receivedMsg.sender),
+                             static_cast<int>(receivedMsg.recipient));
                 }
             }
         }

@@ -1,6 +1,6 @@
-#ifndef _MQTT_PUB_H_
-#define _MQTT_PUB_H_
+#pragma once
+
+#include "esp_err.h"
 
 void mqtt_app_start(void);
-
-#endif // _MQTT_PUB_H_
+esp_err_t mqtt_queue_payload(const char *payload);

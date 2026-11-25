@@ -1,5 +1,4 @@
-#ifndef _MESSAGE_ROUTER_SERVICE_H_
-#define _MESSAGE_ROUTER_SERVICE_H_
+#pragma once
 
 #include "message_router.h"
 #include "service_interface.h"
@@ -22,5 +21,3 @@ class MessageRouterService : public ServiceInterface {
 };
 
 } // namespace services
-
-#endif // _MESSAGE_ROUTER_SERVICE_H_

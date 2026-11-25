@@ -4,6 +4,7 @@
 #include "esp_rom_sys.h"
 #include "esp_timer.h"
 #include "message_router.h"
+#include <cmath>
 #include <stdio.h>
 
 #define TRIG_PIN GPIO_NUM_5
@@ -80,7 +81,10 @@ float ProximitySensorComponent::measureDistance() {
     // Divide by 2 because the wave travels out and back.
     float distance_cm = (pulse_duration_us * 0.0343f) / 2.0f;
 
-    ESP_LOGI(TAG, "Measured distance: %.2f cm", distance_cm);
+    // round the falue to 2 decimals
+    distance_cm = std::roundf(distance_cm * 100.0f) / 100.0f;
+
+    ESP_LOGD(TAG, "Measured distance: %.2f cm", distance_cm);
     return distance_cm;
 }
 

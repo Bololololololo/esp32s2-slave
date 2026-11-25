@@ -14,9 +14,7 @@
 using namespace messageRouter;
 
 namespace wifi {
-namespace {
-
-static const char *TAG = "wifi";
+static const char *TAG = "wifi-component";
 
 static int hexValue(char c) {
     if (c >= '0' && c <= '9') {
@@ -103,8 +101,6 @@ static void appendHtmlEscaped(std::string &html, const uint8_t *value, size_t le
     }
 }
 
-} // namespace
-
 WifiComponent::WifiComponent() : ComponentInterface(ComponentId::COMPONENT_ID_WIFI) {
 }
 
@@ -113,20 +109,17 @@ esp_err_t WifiComponent::init() {
         return ESP_ERR_INVALID_STATE;
     }
 
-    const auto self = shared_from_this();
-    esp_err_t ret = MessageRouter::getInstance()->subscribe(self);
-    if (ret != ESP_OK) {
-        return ret;
-    }
-    m_defaultSubscribed = true;
+    esp_err_t ret{ESP_FAIL};
 
-    ret = MessageRouter::getInstance()->subscribe(self, ComponentId::COMPONENT_ID_LVGL_DISPLAY);
+    ret = MessageRouter::getInstance()->subscribe(shared_from_this());
     if (ret != ESP_OK) {
-        MessageRouter::getInstance()->unsubscribe(self);
-        m_defaultSubscribed = false;
-        return ret;
+        ESP_LOGE(TAG, "Failed to subscribe to messages addressed to itself: %s", esp_err_to_name(ret));
     }
-    m_subscribed = true;
+
+    ret = MessageRouter::getInstance()->subscribe(shared_from_this(), ComponentId::COMPONENT_ID_LVGL_DISPLAY);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to subscribe to messages from LVGL component: %s", esp_err_to_name(ret));
+    }
 
     ret = nvs_flash_init();
     if (ret != ESP_OK) {
@@ -187,14 +180,8 @@ esp_err_t WifiComponent::init() {
 }
 
 void WifiComponent::stop() {
-    if (m_defaultSubscribed) {
-        MessageRouter::getInstance()->unsubscribe(shared_from_this());
-        m_defaultSubscribed = false;
-    }
-    if (m_subscribed) {
-        MessageRouter::getInstance()->unsubscribe(shared_from_this(), ComponentId::COMPONENT_ID_LVGL_DISPLAY);
-        m_subscribed = false;
-    }
+    MessageRouter::getInstance()->unsubscribe(shared_from_this());
+    MessageRouter::getInstance()->unsubscribe(shared_from_this(), ComponentId::COMPONENT_ID_LVGL_DISPLAY);
 
     stopPortalServer();
 

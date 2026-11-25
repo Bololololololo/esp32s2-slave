@@ -1,5 +1,4 @@
-#ifndef MESSAGE_ROUTER_H
-#define MESSAGE_ROUTER_H
+#pragma once
 
 #include "componentIds.h"
 #include "component_interface.h"
@@ -69,5 +68,3 @@ class MessageRouter {
     esp_err_t publish(const Message &message);
 };
 } // namespace messageRouter
-
-#endif // MESSAGE_ROUTER_H

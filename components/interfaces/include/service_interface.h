@@ -1,5 +1,4 @@
-#ifndef _SERVICE_INTERFACE_H_
-#define _SERVICE_INTERFACE_H_
+#pragma once
 
 #include "esp_err.h"
 #include "esp_log.h"
@@ -20,6 +19,7 @@ enum ServiceType {
     SERVICE_MSGR,
     SERVICE_SENSORS,
     SERVICE_OTA,
+    SERVICE_MQTT,
     SERVICE_MAX
 };
 
@@ -75,8 +75,7 @@ class ServiceInterface {
         setServiceState(SERVICE_STARTING);
         ESP_LOGI(taskName, "Creating service worker");
         TaskHandle_t worker = nullptr;
-        const BaseType_t result =
-            xTaskCreate(taskEntry, taskName, taskStackSize, this, taskPriority, &worker);
+        const BaseType_t result = xTaskCreate(taskEntry, taskName, taskStackSize, this, taskPriority, &worker);
         if (result != pdPASS) {
             taskActive.store(false);
             setServiceState(SERVICE_ERROR);
@@ -178,5 +177,3 @@ class ServiceInterface {
     std::atomic<bool> stopRequested{false};
 };
 } // namespace services
-
-#endif // _SERVICE_INTERFACE_H_

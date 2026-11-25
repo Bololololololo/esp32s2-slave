@@ -1,5 +1,4 @@
-#ifndef _MQTT_H_
-#define _MQTT_H_
+#pragma once
 
 #include "component_interface.h"
 #include "sdkconfig.h"
@@ -12,12 +11,5 @@ class MqttComponent : public ComponentInterface, public std::enable_shared_from_
     void stop();
 
   private:
-#ifdef CONFIG_ENABLE_SERVICE_WIFI
-    bool m_subscribed{false};
-    bool m_defaultSubscribed{false};
-#endif
-
     esp_err_t messageHandler(const Message &msg) override;
 };
-
-#endif // _MQTT_H_

@@ -1,5 +1,4 @@
-#ifndef WIFI_COMP_H
-#define WIFI_COMP_H
+#pragma once
 
 #include "component_interface.h"
 #include "esp_event.h"
@@ -46,12 +45,8 @@ class WifiComponent : public ComponentInterface, public std::enable_shared_from_
     bool m_provisioning{false};
     bool m_connected{false};
     bool m_initialized{false};
-    bool m_subscribed{false};
-    bool m_defaultSubscribed{false};
     char m_provisioningSsid[33]{};
     char m_provisioningPassword[17]{};
 };
 
 } // namespace wifi
-
-#endif // WIFI_COMP_H

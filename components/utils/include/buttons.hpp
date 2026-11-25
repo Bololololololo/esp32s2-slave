@@ -7,7 +7,7 @@
 
 class ButtonManager {
   public:
-    static constexpr const char *TAG = "ButtonManager";
+    static constexpr const char *TAG = "button-manager";
     std::array<gpio_num_t, 4> pins_;
     TickType_t poll_interval_;
     std::array<int, 4> last_states_;

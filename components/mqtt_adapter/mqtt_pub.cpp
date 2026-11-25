@@ -3,26 +3,58 @@
 #include "mqtt_client.h"
 
 #include "freertos/FreeRTOS.h"
+#include "freertos/queue.h"
 #include "freertos/task.h"
+#include <cstring>
 
-static const char *TAG = "mqtt_example";
+static const char *TAG = "mqtt-publisher";
 
 // --- UPDATE THIS WITH YOUR PC'S LOCAL IP ADDRESS ---
 #define MQTT_BROKER_URL "mqtt://192.168.1.128:1883"
 
 static esp_mqtt_client_handle_t client = NULL;
+static QueueHandle_t xMqttQueue = nullptr;
 TaskHandle_t xMqttTask;
 
+struct MqttPayload {
+    char value[256];
+};
+
 void mqttTask(void *pvParameters) {
-    int count = 0;
-    char payload[32];
+    (void)pvParameters;
+    MqttPayload payload{};
 
     for (;;) {
-        vTaskDelay(pdMS_TO_TICKS(2000)); // Publish every 2 seconds
-        snprintf(payload, sizeof(payload), "Hello from ESP32: %d", count++);
-        int msg_id = esp_mqtt_client_publish(client, "home/sensor/telemetry", payload, 0, 1, 0);
-        ESP_LOGI(TAG, "Sent publish successful, msg_id=%d", msg_id);
+        if (xQueueReceive(xMqttQueue, &payload, portMAX_DELAY) == pdPASS) {
+            const int msg_id = esp_mqtt_client_publish(client, "sensors/proximity_distance", payload.value, 0, 1, 0);
+            if (msg_id < 0) {
+                ESP_LOGE(TAG, "Failed to publish MQTT payload");
+            } else {
+                ESP_LOGI(TAG, "Sent publish successful, msg_id=%d", msg_id);
+            }
+        }
     }
+}
+
+esp_err_t mqtt_queue_payload(const char *payload) {
+    if (payload == nullptr) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    if (xMqttQueue == nullptr) {
+        xMqttQueue = xQueueCreate(10, sizeof(MqttPayload));
+        if (xMqttQueue == nullptr) {
+            ESP_LOGE(TAG, "Failed to create MQTT payload queue");
+            return ESP_ERR_NO_MEM;
+        }
+    }
+
+    MqttPayload queuedPayload{};
+    std::strncpy(queuedPayload.value, payload, sizeof(queuedPayload.value) - 1);
+    if (xQueueSend(xMqttQueue, &queuedPayload, 0) != pdPASS) {
+        ESP_LOGE(TAG, "Failed to queue MQTT payload");
+        return ESP_ERR_TIMEOUT;
+    }
+    return ESP_OK;
 }
 
 /*
@@ -80,15 +112,32 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
 }
 
 void mqtt_app_start(void) {
+    ESP_LOGI(TAG, "Starting MQTT Application.");
+    if (client != nullptr) {
+        return;
+    }
+
+    if (xMqttQueue == nullptr) {
+        xMqttQueue = xQueueCreate(10, sizeof(MqttPayload));
+        ESP_ERROR_CHECK(xMqttQueue ? ESP_OK : ESP_ERR_NO_MEM);
+    }
+
     esp_mqtt_client_config_t mqtt_cfg{};
     mqtt_cfg.broker.address.uri = MQTT_BROKER_URL;
 
     client = esp_mqtt_client_init(&mqtt_cfg);
+    if (client == nullptr) {
+        ESP_LOGE(TAG, "Failed to initialize MQTT client");
+        return;
+    }
+
     // Register the event handler
     esp_mqtt_client_register_event(client, (esp_mqtt_event_id_t)ESP_EVENT_ANY_ID, mqtt_event_handler, NULL);
     esp_err_t err = esp_mqtt_client_start(client);
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "Failed to start MQTT client");
+        esp_mqtt_client_destroy(client);
+        client = nullptr;
         return;
     }
 

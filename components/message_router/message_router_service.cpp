@@ -2,18 +2,17 @@
 #include "esp_log.h"
 #include <cstdio>
 
+namespace services {
 static const char *TAG = "msgr-service";
 
-namespace services {
-
 esp_err_t MessageRouterService::onStart() {
-    ESP_LOGI(TAG, "Message router service starting");
+    ESP_LOGI(TAG, "Message router service is starting.");
     MessageRouter::getInstance();
-    ESP_LOGI(TAG, "Message router service started successfully");
     return ESP_OK;
 }
 
 void MessageRouterService::onStop() {
+    ESP_LOGI(TAG, "Message router service stopped.");
 }
 
 } // namespace services

@@ -10,9 +10,8 @@
 using namespace messageRouter;
 using namespace utils;
 
-#define TAG "OTAComponent"
-
 namespace ota {
+static const char *TAG = "ota-component";
 
 OTAComponent::OTAComponent(std::shared_ptr<OTAUpdateNotifier> updateNotifier)
     : ComponentInterface(COMPONENT_ID_OTA), updateNotifier(std::move(updateNotifier)) {
@@ -87,8 +86,8 @@ std::string OTAComponent::fetch_version_info() {
 
     config.url = "https://192.168.1.128:8070/version.txt";
 
-    ESP_LOGI(TAG, "Printing server certificate:\n%s", config.cert_pem);
-    ESP_LOGI(TAG, "Printing OTA URL: %s", config.url);
+    ESP_LOGD(TAG, "Printing server certificate:\n%s", config.cert_pem);
+    ESP_LOGD(TAG, "Printing OTA URL: %s", config.url);
 
     esp_http_client_handle_t client = esp_http_client_init(&config);
     if (client == NULL) {
@@ -124,7 +123,7 @@ std::string OTAComponent::fetch_version_info() {
 
             // Null-terminate and process the received chunk
             buffer[read_len] = '\0';
-            ESP_LOGI(TAG, "Data chunk: %s", buffer);
+            ESP_LOGD(TAG, "Data chunk: %s", buffer);
         }
     } else {
         ESP_LOGE(TAG, "Server returned non-200 status code: %d", status_code);

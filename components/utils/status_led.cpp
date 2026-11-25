@@ -8,8 +8,6 @@
 
 using namespace messageRouter;
 
-static const char *TAG = "rgb_led";
-
 #define BLINK_GPIO CONFIG_BLINK_GPIO
 
 #ifndef CONFIG_BLINK_LED_STRIP
@@ -17,6 +15,7 @@ static const char *TAG = "rgb_led";
 #endif
 
 namespace utils {
+static const char *TAG = "rgb-led";
 
 StatusLED::StatusLED() : ComponentInterface(ComponentId::COMPONENT_ID_STATUS_LED) {
     ESP_LOGI(TAG, "Configuring status LED...");

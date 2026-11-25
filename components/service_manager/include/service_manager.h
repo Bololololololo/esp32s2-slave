@@ -1,5 +1,4 @@
-#ifndef _SERVICES_H_
-#define _SERVICES_H_
+#pragma once
 
 #include "esp_err.h"
 #include "service_interface.h"
@@ -41,5 +40,3 @@ class ServiceManager {
 };
 
 } // namespace services
-
-#endif // _SERVICES_H_

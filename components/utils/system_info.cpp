@@ -7,10 +7,10 @@
 #include "esp_system.h"
 #include "system_info.h"
 
-static const char *TAG = "sys_info";
+using namespace std;
 
 namespace utils {
-using namespace std;
+static const char *TAG = "sys-info";
 
 SystemInfo::SystemInfo() {
     ESP_LOGI(TAG, "Initializing system info");

@@ -13,7 +13,6 @@
 #include "freertos/task.h"
 #include "hw069.h"
 #include "message_router.h"
-#include "mqtt.h"
 #include "nvs_helpers.hpp"
 #include "sdkconfig.h"
 #include "service_manager.h"
@@ -119,10 +118,13 @@ void app_main(void) {
     ESP_ERROR_CHECK(serviceManager->startService(ServiceType::SERVICE_WIFI));
 #endif
 #ifdef CONFIG_ENABLE_SERVICE_SENSORS
-//    ESP_ERROR_CHECK(serviceManager->startService(ServiceType::SERVICE_SENSORS));
+    ESP_ERROR_CHECK(serviceManager->startService(ServiceType::SERVICE_SENSORS));
 #endif
 #ifdef CONFIG_ENABLE_SERVICE_OTA
     ESP_ERROR_CHECK(serviceManager->startService(ServiceType::SERVICE_OTA));
+#endif
+#ifdef CONFIG_ENABLE_SERVICE_MQTT
+    ESP_ERROR_CHECK(serviceManager->startService(ServiceType::SERVICE_MQTT));
 #endif
 
     while (1) {

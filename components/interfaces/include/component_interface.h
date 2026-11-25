@@ -1,5 +1,4 @@
-#ifndef COMPONENT_INTERFACE_H
-#define COMPONENT_INTERFACE_H
+#pragma once
 
 #include "componentIds.h"
 #include "esp_err.h"
@@ -41,5 +40,3 @@ class ComponentInterface {
     virtual ~ComponentInterface() = default;
     virtual esp_err_t messageHandler(const Message &msg) = 0;
 };
-
-#endif // COMPONENT_INTERFACE_H

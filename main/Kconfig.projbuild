@@ -89,6 +89,12 @@ menu "Bolo's project settings"
             help
                 Enables the OTA update service, which allows the system to receive and apply over-the-air updates.
                 
+        config ENABLE_SERVICE_MQTT
+            bool "Enable MQTT Service"
+            default y
+            help
+                Enables the MQTT service, which allows the system to publish MQTT messages.
+                
         config ENABLE_SERVICE_GUI_DIGITAL_DISPLAY
             bool "Enable GUI Digital Display Service"
             default y
